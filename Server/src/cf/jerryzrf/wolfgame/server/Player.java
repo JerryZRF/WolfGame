@@ -34,9 +34,9 @@ public class Player {
                     nameOk.set(false);
                 }
             });  //重复
-            if (name.contains(" ")) {
+            if (name.contains(" ") || name.equalsIgnoreCase("null")) {
                 nameOk.set(false);
-            }  //包含空格
+            }  //包含空格 & 特殊符号
             if (!nameOk.get()) {
                 return 1;
             }
