@@ -90,7 +90,9 @@ public class Client {
                     System.out.println(reader.readLine());
                 } else if (command.equalsIgnoreCase("stop")) {
                     System.out.println("服务器关闭");
-                    exit(0);
+                    exit(1);
+                } else if (command.equalsIgnoreCase("die")) {
+                    new Thread(Client::die).start();
                 }
             } catch (IOException e) {
                 if (e.getMessage() != null && e.getMessage().equalsIgnoreCase("Connection reset")) {
@@ -101,5 +103,14 @@ public class Client {
                 exit(2);
             }
         }
+    }
+
+    private static void die() {
+        try {
+            Thread.sleep(20000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.exit(0);
     }
 }

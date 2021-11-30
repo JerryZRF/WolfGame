@@ -19,22 +19,14 @@ public class Connect {
      * @param args 启动参数
      */
     public static void init(String[] args) {
-        if (args.length == 0) {
-            System.out.print("请输入服务器IP：");
-            serverIP = Client.sc.nextLine();
-            System.out.print("请输入服务器端口：");
-            serverPort = Client.sc.nextInt();
-        } else {
-            for (int i = 0; i < args.length - 1; i++) {
-                if (args[i].equalsIgnoreCase("--server")) {
-                    serverIP = args[i + 1];
-                } else if (args[i].equalsIgnoreCase("--port")) {
-                    serverIP = args[i + 1];
-                } else if (args[i].equalsIgnoreCase("-d")) {
-                    break;
-                }
+        for (int i = 0; i < args.length - 1; i++) {
+            if (args[i].equalsIgnoreCase("--server")) {
+                serverIP = args[i + 1];
+            } else if (args[i].equalsIgnoreCase("--port")) {
+                serverPort = Integer.parseInt(args[i + 1]);
             }
         }
+
         try {
             socket = new Socket(serverIP, serverPort);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -47,7 +39,6 @@ public class Connect {
                 System.exit(0);
             }
         } catch (IOException e) {
-            e.printStackTrace();
             System.out.println("无法连接到服务器，原因：" + e.getMessage());
             System.exit(2);  //网络错误
         }

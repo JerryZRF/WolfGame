@@ -28,10 +28,11 @@ public class Server {
         })));
         //接受指令
         new Thread(() -> {
-            while(true) {
+            while (true) {
                 commandHandle(sc.nextLine());
             }
         }).start();
+        game.status = GameStatus.Waiting;
         System.out.println("等待玩家加入中...");
         //等待玩家加入
         gameThread.start();
@@ -55,37 +56,56 @@ public class Server {
             }
         } else if (message.equalsIgnoreCase("quit")) {
             players.remove(player);
+            if (game.status != GameStatus.Waiting) {
+                game.inGamePlayers.remove(player);
+            }
             try {
                 player.getSocket().close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            shout("法官", "玩家" + player.getName() + "退出游戏，现在有" + players.size() + "名玩家");
+            if (game.status == GameStatus.Waiting) {
+                shout("法官", "玩家" + player.getName() + "离开了服务器，现在有" + players.size() + "名玩家");
+            } else {
+                shout("法官", "玩家" + player.getName() + "离开了服务器");
+            }
         } else if (message.startsWith("kill ")) {
             Player p = getPlayer(message.replaceFirst("kill ", ""));
-            if (p == null) {
+            if (p == null && !message.replaceFirst("kill ", "").equalsIgnoreCase("null")) {
                 player.say("法官", "玩家不存在！");
                 return;
             }
-            if (game.playerIdentity.get(player) == Identity.Wolf && game.status == GameStatus.Wolf) {
+            if (game.playerIdentity.get(player) == Identity.Wolf) {
+                if (game.status != GameStatus.Wolf) {
+                    player.say("法官", "你现在不能这么做！");
+                }
                 game.killPlayer.put(player, p);
                 game.say2PlayersByIdentity(Identity.Wolf, player.getName() + "选择杀" + p.getName());
                 game.wolfKillPlayer();
-            } else if (game.playerIdentity.get(player) == Identity.Witch && game.status == GameStatus.Witch) {
-                if (message.equalsIgnoreCase("kill null")) {
-                    game.witchKillPlayer(null);
-                } else {
-                    game.witchKillPlayer(p);
+            } else if (game.playerIdentity.get(player) == Identity.Witch) {
+                if (game.status != GameStatus.Witch) {
+                    player.say("法官", "你现在不能这么做！");
+                    return;
                 }
+                game.witchKillPlayer(p);
             } else if (game.playerIdentity.get(player) == Identity.Hunter) {
                 game.hunterKillPlayer(p);
             }
         } else if (message.equalsIgnoreCase("save yes")) {
+            if (game.status != GameStatus.Witch) {
+                player.say("法官", "你现在不能这么做！");
+                return;
+            }
             game.savePlayer(true);
         } else if (message.equalsIgnoreCase("save no")) {
+            if (game.status != GameStatus.Witch) {
+                player.say("法官", "你现在不能这么做！");
+                return;
+            }
             game.savePlayer(false);
         } else if (message.startsWith("check ")) {
             if (game.status != GameStatus.Prophet) {
+                player.say("法官", "你现在不能这么做！");
                 return;
             }
             if (game.playerIdentity.get(player) == Identity.Prophet) {
@@ -93,28 +113,33 @@ public class Server {
             }
         } else if (message.startsWith("protect ")) {
             if (game.status != GameStatus.Guard) {
+                player.say("法官", "你现在不能这么做！");
                 return;
             }
             if (game.playerIdentity.get(player) == Identity.Guard) {
                 game.protect(getPlayer(message.replaceFirst("protect ", "")));
             }
         } else if (message.startsWith("police ")) {
-            if (game.status == GameStatus.Police) {
-                game.voted.add(player);
-                if (message.replaceFirst("police ", "").equalsIgnoreCase("yes")) {
-                    Server.shout("法官", player.getName() + "竞选警长");
-                    game.prePolice.add(player);
-                    game.votedPolice.add(player);
-                } else {
-                    if (game.votedPolice.contains(player)) {
-                        Server.shout("法官", player.getName() + "退出竞选警长，且不可以投票");
-                        game.prePolice.remove(player);
-                    }
-                }
+            if (game.status != GameStatus.Police) {
+                player.say("法官", "你现在不能这么做！");
+                return;
+            }
+            game.voted.add(player);
+            if (message.replaceFirst("police ", "").equalsIgnoreCase("yes")) {
+                Server.shout("法官", player.getName() + "竞选警长");
+                game.prePolice.add(player);
+                game.votedPolice.add(player);
             } else {
-                player.say("法官", "你不能在发言时竞选");
+                if (game.votedPolice.contains(player)) {
+                    Server.shout("法官", player.getName() + "退出竞选警长，且不可以投票");
+                    game.prePolice.remove(player);
+                }
             }
         } else if (message.startsWith("vote police ")) {
+            if (game.status != GameStatus.PoliceVote) {
+                player.say("法官", "你现在不能这么做！");
+                return;
+            }
             if (message.equalsIgnoreCase("vote police null")) {
                 game.voted.add(player);
                 return;
@@ -136,7 +161,7 @@ public class Server {
                     game.vote.put(p, game.vote.get(p) + 1);
                     game.vote2Player.put(player, p);
                 } else {
-                    player.say("法官", "上警的玩家不能投票");
+                    player.say("法官", "上警的玩家不能投票！");
                 }
             } else {
                 player.say("法官", "该玩家未竞选法官！");
@@ -156,24 +181,26 @@ public class Server {
                 return;
             }
             game.voted.add(player);
-            if (game.status == GameStatus.Vote) {
-                if (game.vote2Player.get(player) != null) {
-                    if (player == game.police.get(0)) {
-                        game.vote.put(game.vote2Player.get(player), game.vote.get(game.vote2Player.get(player)) - 1.5);
-                    } else {
-                        game.vote.put(game.vote2Player.get(player), game.vote.get(game.vote2Player.get(player)) - 1);
-                    }
-                    Server.shout("法官", "玩家" + player.getName() + "改投了" + p.getName());
-                } else {
-                    Server.shout("法官", "玩家" + player.getName() + "投了" + p.getName());
-                }
-                if (player == game.police.get(0)) {
-                    game.vote.put(p, game.vote.get(p) + 1.5);
-                } else {
-                    game.vote.put(p, game.vote.get(p) + 1);
-                }
-                game.vote2Player.put(player, p);
+            if (game.status != GameStatus.Vote) {
+                player.say("法官", "你现在不能这么做！");
+                return;
             }
+            if (game.vote2Player.get(player) != null) {
+                if (player == game.police.get(0)) {
+                    game.vote.put(game.vote2Player.get(player), game.vote.get(game.vote2Player.get(player)) - 1.5);
+                } else {
+                    game.vote.put(game.vote2Player.get(player), game.vote.get(game.vote2Player.get(player)) - 1);
+                }
+                Server.shout("法官", "玩家" + player.getName() + "改投了" + p.getName());
+            } else {
+                Server.shout("法官", "玩家" + player.getName() + "投了" + p.getName());
+            }
+            if (player == game.police.get(0)) {
+                game.vote.put(p, game.vote.get(p) + 1.5);
+            } else {
+                game.vote.put(p, game.vote.get(p) + 1);
+            }
+            game.vote2Player.put(player, p);
         } else if (message.startsWith("give ")) {
             Player p = getPlayer(message.replaceFirst("give ", ""));
             if (p == null) {
@@ -185,9 +212,11 @@ public class Server {
             game.givePolice = true;
         } else if (message.equalsIgnoreCase("boom")) {
             if (game.status != GameStatus.Police && game.status != GameStatus.PoliceSpeaking && game.status != GameStatus.PoliceVote && game.status != GameStatus.Vote) {
+                player.say("法官", "你现在不能这么做！");
                 return;
             }
             if (game.playerIdentity.get(player) != Identity.Wolf) {
+                player.say("法官", "只有狼人才可以这么做！");
                 return;
             }
             gameThread.interrupt();
@@ -201,8 +230,23 @@ public class Server {
             });
             gameThread.start();
         } else if (message.startsWith("team ")) {
-            game.getPlayerByIdentity(game.playerIdentity.get(player)).
-                    forEach(p -> p.say(player.getName(), message.replaceFirst("team ", "")));
+            if (game.playerIdentity.get(player) == Identity.Wolf) {
+                game.getPlayerByIdentity(game.playerIdentity.get(player)).
+                        forEach(p -> p.say("[团队]" + player.getName(), message.replaceFirst("team ", "")));
+            } else {
+                player.say("法官", "只有狼人才可以这么做！");
+            }
+        } else if (message.equalsIgnoreCase("players")) {
+            final String[] playerList = {""};
+            game.inGamePlayers.forEach(p -> playerList[0] += (p.getName() + "  "));
+            player.say("法官", "游戏内玩家有：" + playerList[0]);
+        } else if (message.equalsIgnoreCase("me")) {
+            player.say("法官", "你是" + Identity.getName(game.playerIdentity.get(player)));
+            if (game.playerIdentity.get(player) == Identity.Wolf) {
+                final String[] playerList = {""};
+                game.getPlayerByIdentity(Identity.Wolf).forEach(p -> playerList[0] += (p.getName() + "  "));
+                player.say("法官", "你的队友是：" + playerList[0]);
+            }
         }
     }
 
@@ -224,9 +268,7 @@ public class Server {
      */
     private static void argsHandle(String[] args) {
         for (int i = 0; i < args.length - 1; i++) {
-            if (args[i].equalsIgnoreCase("-d")) {
-                break;
-            } else if (args[i].equalsIgnoreCase("--players")) {
+            if (args[i].equalsIgnoreCase("--players")) {
                 game.playerNum = Integer.parseInt(args[i + 1]);
             } else if (args[i].equalsIgnoreCase("--port")) {
                 Connect.port = Integer.parseInt(args[i + 1]);

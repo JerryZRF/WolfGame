@@ -242,6 +242,7 @@ public class Game {
             Thread.onSpinWait();
         }  //等待狼人杀人
         say2PlayersByIdentity(Identity.Wolf, "狼人请闭眼");
+        killPlayer.clear();
     }
 
     private void prophetTime() {
@@ -311,14 +312,20 @@ public class Game {
             } else {
                 diePlayer.add(protectPlayer);
             }
+        } else {
+            getPlayerByIdentity(Identity.Witch).forEach(p -> p.say("法官", "你没有解药！"));
         }
         this.save = save;
     }
 
     public void witchKillPlayer(Player player) {
-        if (player != null) {
-            diePlayer.add(player);
-            poison = false;
+        if (poison) {
+            if (player != null) {
+                diePlayer.add(player);
+                poison = false;
+            }
+        } else {
+            getPlayerByIdentity(Identity.Witch).forEach(p -> p.say("法官", "你没有毒药！"));
         }
         kill = true;
     }
@@ -337,7 +344,9 @@ public class Game {
             }
         });
         if (ok.get()) {
-            diePlayer.add(player[0]);
+            if (protectPlayer != player[0]) {
+                diePlayer.add(player[0]);
+            }
             return;
         }
         say2PlayersByIdentity(Identity.Wolf, "--------------------------------------");
@@ -347,6 +356,11 @@ public class Game {
     }
 
     public void hunterKillPlayer(Player player) {
+        if (player == null) {
+            getPlayerByIdentity(Identity.Hunter).forEach(p ->
+                    Server.shout("法官", "玩家" + p.getName() + "不带走任何人"));
+            return;
+        }
         if (hunter == false) {
             hunter = true;
             getPlayerByIdentity(Identity.Hunter).forEach(p ->
@@ -481,6 +495,11 @@ public class Game {
             }
             speaker = null;
         }
+        player.send("die");
+        player.say("法官", "20s后关闭客户端");
+        player.say("法官", "-----------------------------------------");
+        player.say("法官", "公布身份");
+        Server.players.forEach(p -> player.say("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
     }
 
     public void playerExit(Player player) {
