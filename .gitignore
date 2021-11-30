@@ -18,6 +18,8 @@
 *.zip
 *.tar.gz
 *.rar
+build
+out
 # Test Files #
 *.cpp
 *.exe
