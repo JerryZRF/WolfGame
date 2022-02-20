@@ -8,11 +8,10 @@ import java.net.Socket;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-
 /**
  * @author JerryZRF
  */
-public class Player {
+public final class Player {
     private String name;
     private Socket socket;
     private PrintWriter writer;
@@ -34,7 +33,7 @@ public class Player {
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             name = reader.readLine();
             AtomicBoolean nameOk = new AtomicBoolean(true);
-            Server.players.forEach(p -> {
+            Server.PLAYERS.forEach(p -> {
                 if (p.getName().equalsIgnoreCase(name)) {
                     nameOk.set(false);
                 }
@@ -45,7 +44,7 @@ public class Player {
             if (!nameOk.get()) {
                 return 1;
             }
-            if (Integer.parseInt(reader.readLine()) != Connect.version) {
+            if (Integer.parseInt(reader.readLine()) != Connect.VERSION) {
                 return 2;
             }
         } catch (IOException e) {
@@ -85,7 +84,7 @@ public class Player {
                 } catch (IOException e) {
                     if (e.getMessage() != null) {
                         if ("Connection reset".equalsIgnoreCase(e.getMessage()) || "Socket closed".equalsIgnoreCase(e.getMessage())) {
-                            Server.game.playerExit(this);
+                            Server.GAME.playerExit(this);
                         }
                         return;
                     }

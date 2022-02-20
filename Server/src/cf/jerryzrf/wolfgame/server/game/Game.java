@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class Game {
+public final class Game {
     public int playerNum = 4;  //应有的玩家数量
     public final Map<Player, Identity> playerIdentity = new HashMap<>();  //玩家阵容
     public final Map<Player, Player> killPlayer = new HashMap<>();  //狼人要杀的玩家
@@ -32,15 +32,19 @@ public class Game {
     public final Map<Player, Player> vote2Player = new HashMap<>();
     public Set<Player> inGamePlayers; //还活着的玩家
 
+    public static void shout(String message) {
+        Server.shout("法官", message);
+    }
+
     public void start() {
         /* 预准备阶段 */
         police.add(null);
-        inGamePlayers = new HashSet<>(Server.players);
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "正在分配身份");
+        inGamePlayers = new HashSet<>(Server.PLAYERS);
+        shout("-----------------------------------------");
+        shout("正在分配身份");
         {
             int wolf = 1;  //狼人数量
-            List<Player> noRolePlayers = new ArrayList<>(Server.players);
+            List<Player> noRolePlayers = new ArrayList<>(Server.PLAYERS);
             Random random = new Random();
             int num = random.nextInt(noRolePlayers.size());
             Player p = noRolePlayers.get(num);
@@ -80,8 +84,8 @@ public class Game {
             noRolePlayers.forEach(player -> playerIdentity.put(player, Identity.Villager));
             noRolePlayers.clear();
         }  //分配角色
-        Server.shout("法官", "游戏开始");
-        Server.players.forEach(p -> p.say("法官", "你是" + Identity.getName(playerIdentity.get(p))));
+        shout("游戏开始");
+        Server.PLAYERS.forEach(p -> p.say("法官", "你是" + Identity.getName(playerIdentity.get(p))));
         //获取狼人列表
         final String[] wolves = {""};
         getPlayerByIdentity(Identity.Wolf).forEach(p -> wolves[0] += p.getName() + " ");
@@ -94,7 +98,7 @@ public class Game {
 
     public void game(boolean police) {
         diePlayer.clear();
-        Server.shout("法官", "天黑请闭眼");
+        shout("天黑请闭眼");
         if (playerNum >= 11 && !getPlayerByIdentity(Identity.Guard).isEmpty()) {
             guardTime();
         }
@@ -105,8 +109,8 @@ public class Game {
         if (!getPlayerByIdentity(Identity.Witch).isEmpty()) {
             witchTime();
         }
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "天亮了");
+        shout("-----------------------------------------");
+        shout("天亮了");
         if (police) {
             policeTime();  //竞选警长
             prePolice = null;
@@ -115,63 +119,18 @@ public class Game {
             vote2Player.clear();
         }
         if (diePlayer.isEmpty()) {
-            Server.shout("法官", "昨晚平安夜");
+            shout("昨晚平安夜");
         } else {
             //获取死亡玩家列表
             final String[] diePlayerList = {""};
             diePlayer.forEach(p -> diePlayerList[0] += (p.getName() + "  "));
-            Server.shout("法官", "昨晚" + diePlayerList[0] + "死了");
+            shout("昨晚" + diePlayerList[0] + "死了");
             diePlayer.forEach(p -> playerDie(p, false));
             diePlayer.clear();
         }
         voteTime();
         vote.clear();
         vote2Player.clear();
-    }
-
-    private void policeTime() {
-        status = GameStatus.Police;
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "竞选警长 (输入/police yes|no)");
-        Server.shout("法官", "等待全体玩家上警...");
-        while (voted.size() < inGamePlayers.size()) {
-            Thread.onSpinWait();
-        } //等待玩家上警
-        voted.clear();
-        if (prePolice.isEmpty()) {
-            Server.shout("法官", "没有玩家上警");
-            return;
-        }
-        Server.shout("法官", "以下玩家上警");
-        final String[] policeList = {""};
-        prePolice.forEach(p -> policeList[0] += (p.getName() + "  "));
-        Server.shout("法官", policeList[0]);
-        status = GameStatus.PoliceSpeaking;
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "竞选玩家发言");
-        speakingTime(prePolice);
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "全体玩家发言");
-        speakingTime(inGamePlayers);
-        Server.shout("法官", "-----------------------------------------");
-        status = GameStatus.PoliceVote;
-        Server.shout("法官", "请投票(/vote police 玩家名)");
-        prePolice.forEach(p -> vote.put(p, 0d));  //初始化
-        Server.shout("法官", "等待全体玩家投票...(/vote police null 弃票)");
-        while (voted.size() < inGamePlayers.size()) {
-            Thread.onSpinWait();
-        }  //等待玩家全部投票
-        voted.clear();
-        Server.shout("法官", "-----------------------------------------");
-        getVoteResult(police);
-        if (police.size() == 1) {
-            Server.shout("法官", "玩家" + police.get(0).getName() + "当上了警长！");
-        } else {
-            Server.shout("法官", "出现平票：");
-            police.forEach(p -> Server.shout("法官", p.getName() + "：" + vote.get(p) + "票"));
-            Server.shout("法官", "再次投票");
-            policeTime();
-        }
     }
 
     private void getVoteResult(List<Player> police) {
@@ -187,31 +146,48 @@ public class Game {
         });
     }
 
-    private void voteTime() {
-        Server.shout("法官", "-----------------------------------------");
-        Server.shout("法官", "发言时间");
+    private void policeTime() {
+        status = GameStatus.Police;
+        shout("-----------------------------------------");
+        shout("竞选警长 (输入/police yes|no)");
+        shout("等待全体玩家上警...");
+        while (voted.size() < inGamePlayers.size()) {
+            Thread.onSpinWait();
+        } //等待玩家上警
+        voted.clear();
+        if (prePolice.isEmpty()) {
+            shout("没有玩家上警");
+            return;
+        }
+        shout("以下玩家上警");
+        final String[] policeList = {""};
+        prePolice.forEach(p -> policeList[0] += (p.getName() + "  "));
+        shout(policeList[0]);
+        status = GameStatus.PoliceSpeaking;
+        shout("-----------------------------------------");
+        shout("竞选玩家发言");
+        speakingTime(prePolice);
+        shout("-----------------------------------------");
+        shout("全体玩家发言");
         speakingTime(inGamePlayers);
-        Server.shout("法官", "-----------------------------------------");
-        status = GameStatus.Vote;
-        Server.shout("法官", "投票时间(/vote 玩家名)");
-        Server.shout("法官", "等待全部玩家投票...(/vote null 弃票)");
-        inGamePlayers.forEach(p -> vote.put(p, 0d));  //初始化
+        shout("-----------------------------------------");
+        status = GameStatus.PoliceVote;
+        shout("请投票(/vote police 玩家名)");
+        prePolice.forEach(p -> vote.put(p, 0d));  //初始化
+        shout("等待全体玩家投票...(/vote police null 弃票)");
         while (voted.size() < inGamePlayers.size()) {
             Thread.onSpinWait();
         }  //等待玩家全部投票
         voted.clear();
-        List<Player> kickPlayer = new ArrayList<>();
-        getVoteResult(kickPlayer);
-        if (kickPlayer.size() == 1) {
-            Server.shout("法官", "玩家" + kickPlayer.get(0).getName() + "被放逐");
-            playerDie(kickPlayer.get(0), true);
-        } else if (kickPlayer.size() == 0) {
-            Server.shout("法官", "没人被放逐");
+        shout("-----------------------------------------");
+        getVoteResult(police);
+        if (police.size() == 1) {
+            shout("玩家" + police.get(0).getName() + "当上了警长！");
         } else {
-            Server.shout("法官", "出现平票：");
-            vote.forEach((p, v) -> Server.shout("法官", p.getName() + "：" + v + "票"));
-            Server.shout("法官", "再次投票");
-            voteTime();
+            shout("出现平票：");
+            police.forEach(p -> shout(p.getName() + "：" + vote.get(p) + "票"));
+            shout("再次投票");
+            policeTime();
         }
     }
 
@@ -359,17 +335,31 @@ public class Game {
         say2PlayersByIdentity(Identity.Wolf, "请统一你们的选择");
     }
 
-    public void hunterKillPlayer(Player player) {
-        if (player == null) {
-            inGamePlayers.forEach(p ->
-                    Server.shout("法官", "玩家" + p.getName() + "不带走任何人"));
-            return;
-        }
-        if (!hunter) {
-            hunter = true;
-            inGamePlayers.forEach(p ->
-                    Server.shout("法官", "玩家" + p.getName() + "带走了" + player.getName()));
-            playerDie(player, true);
+    private void voteTime() {
+        shout("-----------------------------------------");
+        shout("发言时间");
+        speakingTime(inGamePlayers);
+        shout("-----------------------------------------");
+        status = GameStatus.Vote;
+        shout("投票时间(/vote 玩家名)");
+        shout("等待全部玩家投票...(/vote null 弃票)");
+        inGamePlayers.forEach(p -> vote.put(p, 0d));  //初始化
+        while (voted.size() < inGamePlayers.size()) {
+            Thread.onSpinWait();
+        }  //等待玩家全部投票
+        voted.clear();
+        List<Player> kickPlayer = new ArrayList<>();
+        getVoteResult(kickPlayer);
+        if (kickPlayer.size() == 1) {
+            shout("玩家" + kickPlayer.get(0).getName() + "被放逐");
+            playerDie(kickPlayer.get(0), true);
+        } else if (kickPlayer.size() == 0) {
+            shout("没人被放逐");
+        } else {
+            shout("出现平票：");
+            vote.forEach((p, v) -> shout(p.getName() + "：" + v + "票"));
+            shout("再次投票");
+            voteTime();
         }
     }
 
@@ -424,18 +414,32 @@ public class Game {
      * 对对应身份的玩家说话
      *
      * @param identity 身份
-     * @param message 消息
+     * @param message  消息
      */
     public void say2PlayersByIdentity(Identity identity, String message) {
         getPlayerByIdentity(identity).forEach(p -> p.say("法官", message));
     }
 
+    public void hunterKillPlayer(Player player) {
+        if (player == null) {
+            inGamePlayers.forEach(p ->
+                    shout("玩家" + p.getName() + "不带走任何人"));
+            return;
+        }
+        if (!hunter) {
+            hunter = true;
+            inGamePlayers.forEach(p ->
+                    shout("玩家" + p.getName() + "带走了" + player.getName()));
+            playerDie(player, true);
+        }
+    }
+
     private void speakingTime(Collection<Player> players) {
         players.forEach(player -> {
             speaker = player;
-            Server.shout("法官", "--------------------------------------");
-            Server.shout("法官", "现在是" + player.getName() + "发言(45s)");
-            for(int i = 90; i >= 0; i--) {
+            shout("--------------------------------------");
+            shout("现在是" + player.getName() + "发言(45s)");
+            for (int i = 90; i >= 0; i--) {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -463,10 +467,10 @@ public class Game {
             while (!givePolice) {
                 Thread.onSpinWait();
             }
-            Server.shout("法官", "玩家" + player.getName() + "把警徽留给了" + police.get(0));
+            shout("玩家" + player.getName() + "把警徽留给了" + police.get(0));
         } else if (playerIdentity.get(player) == Identity.Hunter) {
             hunter = false;
-            Server.shout("法官", "猎人死了");
+            shout("猎人死了");
             player.say("法官", "你要带走谁(/kill 玩家名)");
             while (!hunter) {
                 Thread.onSpinWait();
@@ -475,7 +479,7 @@ public class Game {
         checkGameEnd();
         if (message) {
             speaker = player;
-            Server.shout("法官", player.getName() + "的遗言时间(30s)");
+            shout(player.getName() + "的遗言时间(30s)");
             for (int i = 60; i >= 0; i--) {
                 try {
                     Thread.sleep(500);
@@ -493,16 +497,16 @@ public class Game {
         player.say("法官", "20s后关闭客户端");
         player.say("法官", "-----------------------------------------");
         player.say("法官", "公布身份");
-        Server.players.forEach(p -> player.say("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
+        Server.PLAYERS.forEach(p -> player.say("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
     }
 
     private void checkGameEnd() {
         if (whoWin() != null) {
-            Server.shout("法官", "-----------------------------------------");
-            Server.shout("法官", whoWin());
-            Server.shout("法官", "公布身份");
-            Server.players.forEach(p -> Server.shout("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
-            Server.shout("法官", "20s后关闭服务器");
+            shout("-----------------------------------------");
+            shout(whoWin());
+            shout("公布身份");
+            Server.PLAYERS.forEach(p -> shout(p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
+            shout("20s后关闭服务器");
             try {
                 Thread.sleep(20000);
             } catch (InterruptedException e) {
@@ -513,7 +517,7 @@ public class Game {
     }
 
     public void playerExit(Player player) {
-        Server.shout("法官", "玩家" + player.getName() + "退出了游戏");
+        shout("玩家" + player.getName() + "退出了游戏");
         if (status != GameStatus.Waiting) {
             inGamePlayers.remove(player);
             checkGameEnd();

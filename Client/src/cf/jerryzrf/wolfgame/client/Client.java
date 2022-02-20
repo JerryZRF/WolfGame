@@ -7,9 +7,12 @@ import java.util.Scanner;
 
 import static java.lang.System.exit;
 
-public class Client {
-    public static final Scanner sc = new Scanner(System.in);
-    public static final String version = "0.1.0-alpha.1";
+/**
+ * @author JerryZRF
+ */
+public final class Client {
+    public static final Scanner SCANNER = new Scanner(System.in);
+    public static final String VERSION = "0.1.0-alpha.1";
     private static String name = "";
     static BufferedReader reader;
     static PrintWriter writer;
@@ -18,23 +21,23 @@ public class Client {
         System.out.println("-----------------------------------------------");
         System.out.println("欢迎游玩 狼人杀-WolfGame");
         System.out.println("作者 JerryZRF");
-        System.out.println("版本 " + version);
+        System.out.println("版本 " + VERSION);
         System.out.println("-----------------------------------------------");
         for (int i = 0; i < args.length - 1; i++) {
-            if (args[i].equalsIgnoreCase("--name")) {
+            if ("--name".equalsIgnoreCase(args[i])) {
                 name = args[i + 1];
             }
         }
-        if (name.equalsIgnoreCase("")) {
+        if ("".equalsIgnoreCase(name)) {
             System.out.println("你的昵称：");
-            name = sc.nextLine();
+            name = SCANNER.nextLine();
         }
         Connect.init(args);
         reader = Connect.getReader();
         writer = Connect.getWriter();
         new Thread(() -> {
             while (true) {
-                commandHandle(sc.nextLine());
+                commandHandle(SCANNER.nextLine());
             }
         }).start();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -85,17 +88,17 @@ public class Client {
                 if (command == null) {
                     continue;
                 }
-                if (command.equalsIgnoreCase("say")) {
+                if ("say".equalsIgnoreCase(command)) {
                     System.out.print("[" + reader.readLine() + "]");
                     System.out.println(reader.readLine());
-                } else if (command.equalsIgnoreCase("stop")) {
+                } else if ("stop".equalsIgnoreCase(command)) {
                     System.out.println("服务器关闭");
                     exit(1);
-                } else if (command.equalsIgnoreCase("die")) {
+                } else if ("die".equalsIgnoreCase(command)) {
                     new Thread(Client::die).start();
                 }
             } catch (IOException e) {
-                if (e.getMessage() != null && e.getMessage().equalsIgnoreCase("Connection reset")) {
+                if (e.getMessage() != null && "Connection reset".equalsIgnoreCase(e.getMessage())) {
                     System.out.println("服务器关闭");
                 } else {
                     e.printStackTrace();

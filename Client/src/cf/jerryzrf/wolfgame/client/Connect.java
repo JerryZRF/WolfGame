@@ -6,13 +6,16 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-public class Connect {
+/**
+ * @author JerryZRF
+ */
+public final class Connect {
     private static String serverIP = "localhost";  //服务器IP
     private static int serverPort = 20210;         //服务器端口
     private static Socket socket;                  //服务器连接
     private static BufferedReader reader;
     private static PrintWriter writer;
-    private final static int version = 1;          //版本信息
+    private final static int VERSION = 1;          //版本信息
 
     /***
      * 初始化和服务器的连接
@@ -20,9 +23,9 @@ public class Connect {
      */
     public static void init(String[] args) {
         for (int i = 0; i < args.length - 1; i++) {
-            if (args[i].equalsIgnoreCase("--server")) {
+            if ("--server".equalsIgnoreCase(args[i])) {
                 serverIP = args[i + 1];
-            } else if (args[i].equalsIgnoreCase("--port")) {
+            } else if ("--port".equalsIgnoreCase(args[i])) {
                 serverPort = Integer.parseInt(args[i + 1]);
             }
         }
@@ -32,9 +35,9 @@ public class Connect {
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new PrintWriter(socket.getOutputStream(), true);
             writer.println(Client.getName());
-            writer.println(version);
+            writer.println(VERSION);
             String wrong = reader.readLine();
-            if (!wrong.equalsIgnoreCase("ok")) {
+            if (!"ok".equalsIgnoreCase(wrong)) {
                 System.out.println("连接失败，" + wrong);
                 System.exit(0);
             }
@@ -53,6 +56,7 @@ public class Connect {
     public static PrintWriter getWriter() {
         return writer;
     }
+
     public static Socket getSocket() {
         return socket;
     }
