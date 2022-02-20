@@ -1,4 +1,4 @@
-package cf.jerryzrf.wolfgame.server;
+package cf.jerryzrf.wolfgame.server.game;
 
 public enum Identity {
     Wolf, Villager, Hunter, Witch, Prophet, Guard;

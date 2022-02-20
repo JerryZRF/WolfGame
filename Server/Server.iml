@@ -7,5 +7,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="ServerAPI" exported="" />
+    <orderEntry type="library" name="yaml.snakeyaml" level="project" />
   </component>
 </module>

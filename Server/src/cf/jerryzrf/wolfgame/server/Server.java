@@ -1,12 +1,16 @@
 package cf.jerryzrf.wolfgame.server;
 
+import cf.jerryzrf.wolfgame.server.game.Game;
+import cf.jerryzrf.wolfgame.server.game.GameStatus;
+import cf.jerryzrf.wolfgame.server.game.Identity;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 
 public class Server {
-    public static final String version = "0.1.0-alpha.1";
+    public static final String version = "0.2.0-alpha.1";
     public static final Set<Player> players = new HashSet<>();
     public static final Scanner sc = new Scanner(System.in);
     public static final Game game = new Game();
@@ -17,15 +21,17 @@ public class Server {
         System.out.println("服务器启动，开放" + Connect.port + "端口");
         System.out.println("作者 JerryZRF");
         System.out.println("版本 " + version);
-        //关闭服务器时关闭连接
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> players.forEach(p -> {
-            try {
-                p.send("stop");
-                p.getSocket().close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        })));
+        System.out.println("加载插件中...");
+        //关闭服务器时
+        Runtime.getRuntime().addShutdownHook(new Thread(() ->
+                players.forEach(p -> {
+                    try {
+                        p.send("stop");
+                        p.getSocket().close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                })));
         //接受指令
         new Thread(() -> {
             while (true) {
@@ -46,10 +52,10 @@ public class Server {
     /**
      * 处理来自玩家的信息
      *
-     * @param player 发送玩家
+     * @param player  发送玩家
      * @param message 信息
      */
-    public static void messageHandler(Player player, String message) {
+    protected static void messageHandler(Player player, String message) {
         if (message.startsWith("say")) {
             if (game.status == GameStatus.Waiting || game.speaker == player) {
                 shout(player.getName(), message.replaceFirst("say", ""));
@@ -255,7 +261,7 @@ public class Server {
      *
      * @param command 指令
      */
-    public static void commandHandle(String command) {
+    private static void commandHandle(String command) {
         if (command.startsWith("/say ")) {
             shout("法官", command.replaceFirst("/say ", ""));
         }

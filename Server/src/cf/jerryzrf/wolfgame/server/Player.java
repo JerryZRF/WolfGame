@@ -5,9 +5,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
+/**
+ * @author JerryZRF
+ */
 public class Player {
     private String name;
     private Socket socket;
@@ -16,13 +20,14 @@ public class Player {
 
     /**
      * 初始化玩家
+     *
      * @param socket 玩家连接
      * @return 错误值
      * 0 无错误
      * 1 名字非法
      * 2 版本不同
      */
-    int init(Socket socket) {
+    public int init(Socket socket) {
         this.socket = socket;
         try {
             writer = new PrintWriter(socket.getOutputStream(), true);
@@ -34,7 +39,7 @@ public class Player {
                     nameOk.set(false);
                 }
             });  //重复
-            if (name.contains(" ") || name.equalsIgnoreCase("null")) {
+            if (name.contains(" ") || "null".equalsIgnoreCase(name)) {
                 nameOk.set(false);
             }  //包含空格 & 特殊符号
             if (!nameOk.get()) {
@@ -79,7 +84,7 @@ public class Player {
                     Server.messageHandler(this, reader.readLine());
                 } catch (IOException e) {
                     if (e.getMessage() != null) {
-                        if (e.getMessage().equalsIgnoreCase("Connection reset") || e.getMessage().equalsIgnoreCase("Socket closed")) {
+                        if ("Connection reset".equalsIgnoreCase(e.getMessage()) || "Socket closed".equalsIgnoreCase(e.getMessage())) {
                             Server.game.playerExit(this);
                         }
                         return;
@@ -97,5 +102,21 @@ public class Player {
 
     public Socket getSocket() {
         return socket;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Player player)) {
+            return false;
+        }
+        return name.equals(player.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 }

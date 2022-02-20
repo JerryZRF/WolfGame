@@ -1,4 +1,7 @@
-package cf.jerryzrf.wolfgame.server;
+package cf.jerryzrf.wolfgame.server.game;
+
+import cf.jerryzrf.wolfgame.server.Player;
+import cf.jerryzrf.wolfgame.server.Server;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -135,6 +138,10 @@ public class Game {
             Thread.onSpinWait();
         } //等待玩家上警
         voted.clear();
+        if (prePolice.isEmpty()) {
+            Server.shout("法官", "没有玩家上警");
+            return;
+        }
         Server.shout("法官", "以下玩家上警");
         final String[] policeList = {""};
         prePolice.forEach(p -> policeList[0] += (p.getName() + "  "));
@@ -156,6 +163,18 @@ public class Game {
         }  //等待玩家全部投票
         voted.clear();
         Server.shout("法官", "-----------------------------------------");
+        getVoteResult(police);
+        if (police.size() == 1) {
+            Server.shout("法官", "玩家" + police.get(0).getName() + "当上了警长！");
+        } else {
+            Server.shout("法官", "出现平票：");
+            police.forEach(p -> Server.shout("法官", p.getName() + "：" + vote.get(p) + "票"));
+            Server.shout("法官", "再次投票");
+            policeTime();
+        }
+    }
+
+    private void getVoteResult(List<Player> police) {
         final double[] maxv = {0};
         vote.forEach((p, v) -> {
             if (v > maxv[0]) {
@@ -166,14 +185,6 @@ public class Game {
                 police.add(p);
             }
         });
-        if (police.size() == 1) {
-            Server.shout("法官", "玩家" + police.get(0).getName() + "当上了警长！");
-        } else {
-            Server.shout("法官", "出现平票：");
-            police.forEach(p -> Server.shout("法官", p.getName() + "：" + vote.get(p) + "票"));
-            Server.shout("法官", "再次投票");
-            policeTime();
-        }
     }
 
     private void voteTime() {
@@ -190,16 +201,7 @@ public class Game {
         }  //等待玩家全部投票
         voted.clear();
         List<Player> kickPlayer = new ArrayList<>();
-        final double[] maxv = {0};
-        vote.forEach((p, v) -> {
-            if (v > maxv[0]) {
-                kickPlayer.clear();
-                kickPlayer.add(p);
-                maxv[0] = v;
-            } else if (v == maxv[0]) {
-                kickPlayer.add(p);
-            }
-        });
+        getVoteResult(kickPlayer);
         if (kickPlayer.size() == 1) {
             Server.shout("法官", "玩家" + kickPlayer.get(0).getName() + "被放逐");
             playerDie(kickPlayer.get(0), true);
@@ -306,14 +308,16 @@ public class Game {
 
     public void savePlayer(boolean save) {
         if (save) {
+            if (!antidote) {
+                say2PlayersByIdentity(Identity.Witch, "你没有解药！");
+                return;
+            }
             antidote = false;
             if (!diePlayer.isEmpty()) {
                 diePlayer.clear();
             } else {
                 diePlayer.add(protectPlayer);
             }
-        } else {
-            getPlayerByIdentity(Identity.Witch).forEach(p -> p.say("法官", "你没有解药！"));
         }
         this.save = save;
     }
@@ -357,13 +361,13 @@ public class Game {
 
     public void hunterKillPlayer(Player player) {
         if (player == null) {
-            getPlayerByIdentity(Identity.Hunter).forEach(p ->
+            inGamePlayers.forEach(p ->
                     Server.shout("法官", "玩家" + p.getName() + "不带走任何人"));
             return;
         }
-        if (hunter == false) {
+        if (!hunter) {
             hunter = true;
-            getPlayerByIdentity(Identity.Hunter).forEach(p ->
+            inGamePlayers.forEach(p ->
                     Server.shout("法官", "玩家" + p.getName() + "带走了" + player.getName()));
             playerDie(player, true);
         }
@@ -464,21 +468,11 @@ public class Game {
             hunter = false;
             Server.shout("法官", "猎人死了");
             player.say("法官", "你要带走谁(/kill 玩家名)");
-            while (!hunter) Thread.onSpinWait();
-        }
-        if (whoWin() != null) {
-            Server.shout("法官", "-----------------------------------------");
-            Server.shout("法官", whoWin());
-            Server.shout("法官", "公布身份");
-            Server.players.forEach(p -> Server.shout("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
-            Server.shout("法官", "20s后关闭服务器");
-            try {
-                Thread.sleep(20000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            while (!hunter) {
+                Thread.onSpinWait();
             }
-            System.exit(0);
         }
+        checkGameEnd();
         if (message) {
             speaker = player;
             Server.shout("法官", player.getName() + "的遗言时间(30s)");
@@ -502,23 +496,27 @@ public class Game {
         Server.players.forEach(p -> player.say("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
     }
 
+    private void checkGameEnd() {
+        if (whoWin() != null) {
+            Server.shout("法官", "-----------------------------------------");
+            Server.shout("法官", whoWin());
+            Server.shout("法官", "公布身份");
+            Server.players.forEach(p -> Server.shout("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
+            Server.shout("法官", "20s后关闭服务器");
+            try {
+                Thread.sleep(20000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.exit(0);
+        }
+    }
+
     public void playerExit(Player player) {
         Server.shout("法官", "玩家" + player.getName() + "退出了游戏");
         if (status != GameStatus.Waiting) {
             inGamePlayers.remove(player);
-            if (whoWin() != null) {
-                Server.shout("法官", "-----------------------------------------");
-                Server.shout("法官", whoWin());
-                Server.shout("法官", "公布身份");
-                Server.players.forEach(p -> Server.shout("法官", p.getName() + "：" + Identity.getName(playerIdentity.get(p))));
-                Server.shout("法官", "20s后关闭服务器");
-                try {
-                    Thread.sleep(20000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                System.exit(0);
-            }
+            checkGameEnd();
         }
     }
 }

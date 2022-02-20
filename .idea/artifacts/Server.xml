@@ -3,6 +3,8 @@
     <output-path>$PROJECT_DIR$/build</output-path>
     <root id="archive" name="Server.jar">
       <element id="module-output" name="Server" />
+      <element id="module-output" name="ServerAPI" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/yaml/snakeyaml/1.29/snakeyaml-1.29.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
